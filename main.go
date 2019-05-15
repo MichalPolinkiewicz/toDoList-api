@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/MichalPolinkiewicz/to-do-api/models"
+	"github.com/MichalPolinkiewicz/to-do-api/logger"
 	"github.com/MichalPolinkiewicz/to-do-api/routes"
 	"github.com/gorilla/mux"
 	"log"
@@ -9,14 +9,10 @@ import (
 )
 
 func main() {
-	models.Tasks = []models.Task{
-		{Id: "1", Name:"Task 1", Description:"Desc for tasc 1", Status:1},
-		{Id: "2", Name:"Task 2", Description:"Desc for tasc 2", Status:2},
-		{Id: "3", Name:"Task 3", Description:"Desc for tasc 3", Status:3},
-	}
 
+	//models.Tasks = db.GetAllTasks()
 	router := newRouter()
-	log.Fatal(http.ListenAndServe(":8081", router))
+	go log.Fatal(http.ListenAndServe(":8081", router))
 
 }
 
@@ -27,7 +23,9 @@ func newRouter() *mux.Router {
 		var handler http.Handler
 
 		handler = route.HandlerFunc
-		//handler = Logger(handler, route.Name)
+
+		//decorator
+		handler = logger.Log(handler, route.Name)
 
 		router.
 			Methods(route.Method).
@@ -35,6 +33,5 @@ func newRouter() *mux.Router {
 			Name(route.Name).
 			Handler(handler)
 	}
-
 	return router
 }

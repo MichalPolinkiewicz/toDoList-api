@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"github.com/MichalPolinkiewicz/to-do-api/db"
 	"github.com/MichalPolinkiewicz/to-do-api/models"
 	"github.com/gorilla/mux"
 	"net/http"
@@ -11,41 +12,36 @@ import (
 func CreateTask(w http.ResponseWriter, req *http.Request){
 	var newTask models.Task
 	_ = json.NewDecoder(req.Body).Decode(&newTask)
-	models.Tasks = append(models.Tasks, newTask)
-	json.NewEncoder(w).Encode(models.Tasks)
+	db.CreateTask(newTask)
+	json.NewEncoder(w).Encode(db.GetAllTasks())
 }
 
 func GetAllTasks(w http.ResponseWriter, req *http.Request) {
-	json.NewEncoder(w).Encode(models.Tasks)
+	json.NewEncoder(w).Encode(db.GetAllTasks())
 }
 
 func GetTaskById(w http.ResponseWriter, req *http.Request) {
-	reqPrms := mux.Vars(req)
-	for _, task := range models.Tasks {
-		if task.Id == reqPrms["id"] {
-			json.NewEncoder(w).Encode(task)
-			return
-		}
+	task := models.Task{}
+
+	if id, ok := mux.Vars(req)["id"]; ok {
+		idAsInt, _ := strconv.Atoi(id)
+		task = db.GetTaskById(idAsInt)
 	}
-	json.NewEncoder(w).Encode(models.Task{})
+
+	json.NewEncoder(w).Encode(task)
 }
 
 func GetTasksByStatus(w http.ResponseWriter, req *http.Request){
 	reqPrms := mux.Vars(req)
 	var tasks []models.Task
+
 	if status, ok := reqPrms["status"]; ok {
-		statusAsInt, _ := strconv.ParseInt(status, 10, 64)
-		tasks = getTasksByStatus(int(statusAsInt))
+		statusAsInt, _ := strconv.Atoi(status)
+		tasks = getTasksByStatus(statusAsInt)
 	}
 	json.NewEncoder(w).Encode(tasks)
 }
 
-func getTasksByStatus(status int) []models.Task {
-	var tasks []models.Task
-	for _, task := range models.Tasks {
-		if task.Status == status {
-			tasks = append(tasks, task)
-		}
-	}
-	return tasks
+func getTasksByStatus(s int) []models.Task {
+	return db.GetTasksByStatus(s)
 }
