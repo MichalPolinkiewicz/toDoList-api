@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/MichalPolinkiewicz/to-do-api/db"
 	"github.com/MichalPolinkiewicz/to-do-api/models"
 	"github.com/gorilla/mux"
@@ -12,7 +13,12 @@ import (
 func CreateTask(w http.ResponseWriter, req *http.Request){
 	var newTask models.Task
 	_ = json.NewDecoder(req.Body).Decode(&newTask)
-	db.CreateTask(newTask)
+
+	if newTask.IsValidTask(){
+		db.CreateTask(newTask)
+	} else {
+		fmt.Println("Task is invalid!")
+	}
 	json.NewEncoder(w).Encode(db.GetAllTasks())
 }
 
