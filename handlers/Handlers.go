@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/MichalPolinkiewicz/to-do-api/db"
 	"github.com/MichalPolinkiewicz/to-do-api/models"
 	"github.com/gorilla/mux"
@@ -10,16 +9,16 @@ import (
 	"strconv"
 )
 
-func CreateTask(w http.ResponseWriter, req *http.Request){
+func CreateTask(w http.ResponseWriter, req *http.Request) {
 	var newTask models.Task
 	_ = json.NewDecoder(req.Body).Decode(&newTask)
 
-	if newTask.IsValidTask(){
+	if newTask.IsValidTask() {
 		db.CreateTask(&newTask)
+		json.NewEncoder(w).Encode(db.GetAllTasks())
 	} else {
-		fmt.Println("Task is invalid!")
+		w.WriteHeader(http.StatusBadRequest)
 	}
-	json.NewEncoder(w).Encode(db.GetAllTasks())
 }
 
 func GetAllTasks(w http.ResponseWriter, req *http.Request) {
@@ -37,7 +36,7 @@ func GetTaskById(w http.ResponseWriter, req *http.Request) {
 	json.NewEncoder(w).Encode(task)
 }
 
-func GetTasksByStatus(w http.ResponseWriter, req *http.Request){
+func GetTasksByStatus(w http.ResponseWriter, req *http.Request) {
 	reqPrms := mux.Vars(req)
 	var tasks []models.Task
 

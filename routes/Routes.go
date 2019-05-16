@@ -1,6 +1,7 @@
 package routes
 
 import (
+	"github.com/MichalPolinkiewicz/to-do-api/auth"
 	"github.com/MichalPolinkiewicz/to-do-api/handlers"
 	"net/http"
 )
@@ -38,5 +39,17 @@ var AllRoutes = Routes{
 		"GET",
 		"/tasks/{status}",
 		handlers.GetTasksByStatus,
+	},
+	Route{
+		"SignIn",
+		"POST",
+		"/login",
+		auth.LogIn,
+	},
+	Route{
+		"LogOut",
+		"POST",
+		"/logout",
+		auth.LogOut,
 	},
 }

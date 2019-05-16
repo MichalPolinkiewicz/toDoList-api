@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/MichalPolinkiewicz/to-do-api/auth"
 	"github.com/MichalPolinkiewicz/to-do-api/logger"
 	"github.com/MichalPolinkiewicz/to-do-api/routes"
 	"github.com/gorilla/mux"
@@ -9,11 +10,8 @@ import (
 )
 
 func main() {
-
-	//models.Tasks = db.GetAllTasks()
 	router := newRouter()
 	go log.Fatal(http.ListenAndServe(":8081", router))
-
 }
 
 func newRouter() *mux.Router {
@@ -24,8 +22,13 @@ func newRouter() *mux.Router {
 
 		handler = route.HandlerFunc
 
-		//decorator
+		//logger decorator
 		handler = logger.Log(handler, route.Name)
+
+		//auth decorator
+		if route.Name != "SignIn" {
+			handler = auth.CheckJwtToken(handler)
+		}
 
 		router.
 			Methods(route.Method).

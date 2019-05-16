@@ -24,9 +24,9 @@ func isEmpty(s string) bool {
 	return len(s) == 0
 }
 
-//type User struct {
-//	Login string
-//	Password string
-//	Token string
-//	IsLogged bool
-//}
+type User struct {
+	Login    string
+	Password string
+	Key      string //login + password + datetime now + szyfr
+	IsLogged bool
+}
