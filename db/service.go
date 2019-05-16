@@ -4,8 +4,8 @@ import (
 	"github.com/MichalPolinkiewicz/to-do-api/models"
 )
 
-func CreateTask(t models.Task){
-	db.Create(t)
+func CreateTask(t *models.Task){
+	db.Create(*t)
 }
 
 func GetAllTasks() []models.Task {
@@ -15,16 +15,16 @@ func GetAllTasks() []models.Task {
 	return tasks
 }
 
-func GetTaskById(i int) models.Task {
+func GetTaskById(i *int) models.Task {
 	var task models.Task
-	db.Where("id = ?", i).Find(&task)
+	db.Where("id = ?", *i).Find(&task)
 
 	return task
 }
 
-func GetTasksByStatus(s int) []models.Task {
+func GetTasksByStatus(s *int) *[]models.Task {
 	var tasks []models.Task
-	db.Where("status = ?", s).Find(&tasks)
+	db.Where("status = ?", *s).Find(&tasks)
 
-	return tasks
+	return &tasks
 }

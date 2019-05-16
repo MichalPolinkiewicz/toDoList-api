@@ -15,7 +15,7 @@ func CreateTask(w http.ResponseWriter, req *http.Request){
 	_ = json.NewDecoder(req.Body).Decode(&newTask)
 
 	if newTask.IsValidTask(){
-		db.CreateTask(newTask)
+		db.CreateTask(&newTask)
 	} else {
 		fmt.Println("Task is invalid!")
 	}
@@ -31,7 +31,7 @@ func GetTaskById(w http.ResponseWriter, req *http.Request) {
 
 	if id, ok := mux.Vars(req)["id"]; ok {
 		idAsInt, _ := strconv.Atoi(id)
-		task = db.GetTaskById(idAsInt)
+		task = db.GetTaskById(&idAsInt)
 	}
 
 	json.NewEncoder(w).Encode(task)
@@ -43,11 +43,11 @@ func GetTasksByStatus(w http.ResponseWriter, req *http.Request){
 
 	if status, ok := reqPrms["status"]; ok {
 		statusAsInt, _ := strconv.Atoi(status)
-		tasks = getTasksByStatus(statusAsInt)
+		tasks = *getTasksByStatus(&statusAsInt)
 	}
 	json.NewEncoder(w).Encode(tasks)
 }
 
-func getTasksByStatus(s int) []models.Task {
+func getTasksByStatus(s *int) *[]models.Task {
 	return db.GetTasksByStatus(s)
 }
