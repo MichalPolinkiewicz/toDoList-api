@@ -44,12 +44,12 @@ var AllRoutes = Routes{
 		"SignIn",
 		"POST",
 		"/login",
-		auth.LogIn,
+		auth.Login,
 	},
 	Route{
-		"LogOut",
+		"Logout",
 		"POST",
 		"/logout",
-		auth.LogOut,
+		auth.Logout,
 	},
 }
