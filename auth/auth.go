@@ -2,6 +2,8 @@ package auth
 
 import (
 	"encoding/json"
+	"fmt"
+	"github.com/MichalPolinkiewicz/to-do-api/db"
 	"github.com/MichalPolinkiewicz/to-do-api/models"
 	"github.com/dgrijalva/jwt-go"
 	"net/http"
@@ -9,45 +11,57 @@ import (
 )
 
 var JwtKey = []byte("my_secret_key")
-
-var ValidUsers = []models.User{
-	{"User", "Pass", "", false},
-	{"User22", "Pass", "", false},
-}
-
 var LoggedOutUsers []string
 
-// Create a struct to read the username and password from the request body
-type Credentials struct {
-	Password string `json:"password"`
-	Username string `json:"username"`
-}
-
-// Create a struct that will be encoded to a JWT. We add jwt.StandardClaims as an embedded type, to provide fields like expiry time
+// Struct that will be encoded to a JWT. We add jwt.StandardClaims as an embedded type, to provide fields like expiry time
 type Claims struct {
+	UserId   int    `json:"user_id"`
 	Username string `json:"username"`
 	jwt.StandardClaims
 }
 
-func Login(res http.ResponseWriter, req *http.Request) {
-	var creds Credentials
+func CreateAccount(res http.ResponseWriter, req *http.Request) {
+	//c, err := ReadUserFromRequest(req)
+	//
+	//if err != nil {
+	//	res.WriteHeader(http.StatusBadRequest)
+	//	return
+	//}
 
-	// Get the JSON body and decode into credentials
-	err := json.NewDecoder(req.Body).Decode(&creds)
+	//u := models.User{Username:c.Username, Password:c.Password, IsLogged:false}
+
+	//pobranie danych z requesta
+	//sprawdzenie w bazie czy sa email jest unikalny
+	//jesli tak - zapis
+}
+
+func Login(res http.ResponseWriter, req *http.Request) {
+	var user models.User
+	err := json.NewDecoder(req.Body).Decode(&user)
+
+	//if some params missing return http 400
 	if err != nil {
-		// If the structure of the body is wrong, return an HTTP error
 		res.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
 	// check that user account exists in 'db' and password is valid - user can log in
-	if !IsValidUser(&creds) {
+	if !isValidUser(&user) {
+		res.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	//get user id from db
+	userFromDb := db.GetUserByUsernameAndPassword(&user.Username, &user.Password)
+	fmt.Println("user from db = ", userFromDb)
+
+	if userFromDb.Id == 0 {
 		res.WriteHeader(http.StatusUnauthorized)
 		return
 	}
 
 	//generate and set token cookie
-	tokenString, err := createToken(creds.Username, "token")
+	tokenString, err := createToken(userFromDb.Id, user.Username, "token")
 
 	// If there is an error in creating the JWT return an internal server error
 	if err != nil {
@@ -61,7 +75,7 @@ func Login(res http.ResponseWriter, req *http.Request) {
 	})
 
 	//generate and set token refresh cookie
-	tokenString, err = createToken(creds.Username, "refresh")
+	tokenString, err = createToken(userFromDb.Id, user.Username, "refresh")
 
 	if err != nil {
 		res.WriteHeader(http.StatusInternalServerError)
@@ -168,7 +182,7 @@ func CheckJwtToken(h http.Handler) http.Handler {
 				}
 
 				//creating new token
-				t, err := createToken(claims.Username, "token")
+				t, err := createToken(claims.UserId, claims.Username, "token")
 
 				if err != nil {
 					res.WriteHeader(http.StatusUnauthorized)
@@ -187,6 +201,20 @@ func CheckJwtToken(h http.Handler) http.Handler {
 			}
 		}
 	})
+}
+func GetUserIdFromRequest(req *http.Request) int {
+	c, _ := getCookie(req, "refresh")
+
+	claims := &Claims{}
+	_, err := jwt.ParseWithClaims(c.Value, claims, func(token *jwt.Token) (interface{}, error) {
+		return JwtKey, nil
+	})
+
+	if err != nil {
+		return 0
+	}
+
+	return claims.UserId
 }
 
 func isValidToken(t *string) (bool, int) {
@@ -208,7 +236,7 @@ func isValidToken(t *string) (bool, int) {
 	return tkn.Valid, i
 }
 
-func createToken(u string, t string) (string, error) {
+func createToken(id int, u string, t string) (string, error) {
 	// Declare the expiration time of the token, depending on type
 	var expirationTime time.Time
 
@@ -220,6 +248,7 @@ func createToken(u string, t string) (string, error) {
 
 	// Create the JWT claims, which includes the username and expiry time
 	claims := &Claims{
+		UserId:   id,
 		Username: u,
 		StandardClaims: jwt.StandardClaims{
 			// In JWT, the expiry time is expressed as unix milliseconds
@@ -247,27 +276,13 @@ func getCookie(req *http.Request, cn string) (*http.Cookie, int) {
 	return c, ec
 }
 
-func IsValidUser(c *Credentials) bool {
-	if userExists(&c.Username) && isCorrectPassword(&c.Username, &c.Password) {
+func isValidUser(u *models.User) bool {
+	user := db.GetUserByUsernameAndPassword(&u.Username, &u.Password)
+
+	if user != nil {
 		return true
 	}
+
 	return false
 }
 
-func userExists(l *string) bool {
-	for _, e := range ValidUsers {
-		if e.Login == *l {
-			return true
-		}
-	}
-	return false
-}
-
-func isCorrectPassword(l *string, p *string) bool {
-	for _, e := range ValidUsers {
-		if e.Login == *l && e.Password == *p {
-			return true
-		}
-	}
-	return false
-}

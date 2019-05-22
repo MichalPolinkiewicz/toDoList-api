@@ -8,9 +8,9 @@ func CreateTask(t *models.Task){
 	db.Create(*t)
 }
 
-func GetAllTasks() []models.Task {
+func GetAllTasks(i *int) []models.Task {
 	var tasks []models.Task
-	db.Find(&tasks)
+	db.Where("user_id = ?", *i).Find(&tasks)
 
 	return tasks
 }
@@ -27,4 +27,11 @@ func GetTasksByStatus(s *int) *[]models.Task {
 	db.Where("status = ?", *s).Find(&tasks)
 
 	return &tasks
+}
+
+func GetUserByUsernameAndPassword(u *string, p *string) *models.User {
+	var user models.User
+	db.Where("username = ?", *u).Where("password = ?", *p).Find(&user)
+
+	return &user
 }

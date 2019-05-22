@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"github.com/MichalPolinkiewicz/to-do-api/auth"
 	"github.com/MichalPolinkiewicz/to-do-api/db"
 	"github.com/MichalPolinkiewicz/to-do-api/models"
 	"github.com/gorilla/mux"
@@ -12,17 +13,19 @@ import (
 func CreateTask(w http.ResponseWriter, req *http.Request) {
 	var newTask models.Task
 	_ = json.NewDecoder(req.Body).Decode(&newTask)
+	newTask.UserId = auth.GetUserIdFromRequest(req)
 
-	if newTask.IsValidTask() {
+	if newTask.IsValidTask() && newTask.UserId != 0 {
 		db.CreateTask(&newTask)
-		json.NewEncoder(w).Encode(db.GetAllTasks())
+		json.NewEncoder(w).Encode(db.GetAllTasks(&newTask.UserId))
 	} else {
 		w.WriteHeader(http.StatusBadRequest)
 	}
 }
 
 func GetAllTasks(w http.ResponseWriter, req *http.Request) {
-	json.NewEncoder(w).Encode(db.GetAllTasks())
+	id := auth.GetUserIdFromRequest(req)
+	json.NewEncoder(w).Encode(db.GetAllTasks(&id))
 }
 
 func GetTaskById(w http.ResponseWriter, req *http.Request) {

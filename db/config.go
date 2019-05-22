@@ -2,6 +2,7 @@ package db
 
 import (
 	"fmt"
+	"github.com/MichalPolinkiewicz/to-do-api/models"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/jinzhu/gorm"
 	"github.com/joho/godotenv"
@@ -34,5 +35,8 @@ func init() {
 	}
 
 	db = conn
-	//db.Debug().AutoMigrate(&models.Task{})
+
+	db.Debug().AutoMigrate(&models.Task{})
+	db.Debug().AutoMigrate(&models.User{})
+
 }
