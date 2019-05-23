@@ -33,7 +33,8 @@ func GetTaskById(w http.ResponseWriter, req *http.Request) {
 
 	if id, ok := mux.Vars(req)["id"]; ok {
 		idAsInt, _ := strconv.Atoi(id)
-		task = db.GetTaskById(&idAsInt)
+		ui := auth.GetUserIdFromRequest(req)
+		task = db.GetTaskById(&idAsInt, &ui)
 	}
 
 	json.NewEncoder(w).Encode(task)
@@ -45,11 +46,12 @@ func GetTasksByStatus(w http.ResponseWriter, req *http.Request) {
 
 	if status, ok := reqPrms["status"]; ok {
 		statusAsInt, _ := strconv.Atoi(status)
-		tasks = *getTasksByStatus(&statusAsInt)
+		i := auth.GetUserIdFromRequest(req)
+		tasks = *getTasksByStatus(&statusAsInt, &i)
 	}
 	json.NewEncoder(w).Encode(tasks)
 }
 
-func getTasksByStatus(s *int) *[]models.Task {
-	return db.GetTasksByStatus(s)
+func getTasksByStatus(s *int, u *int) *[]models.Task {
+	return db.GetTasksByStatus(s, u)
 }

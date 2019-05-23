@@ -22,7 +22,7 @@ func newRouter() *mux.Router {
 
 		handler = route.HandlerFunc
 
-		if route.Name != "SignIn" && route.Name != "Logout" {
+		if route.Name != "SignIn" && route.Name != "Logout" && route.Name != "RegisterUser" {
 			handler = logger.Log(handler, route.Name)
 			handler = auth.CheckJwtToken(handler)
 		}

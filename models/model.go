@@ -34,7 +34,3 @@ func (t *Task) IsValidTask() bool {
 func isEmpty(s string) bool {
 	return len(s) == 0
 }
-
-func (u User) getAllTasks() Tasks {
-	return nil
-}

@@ -41,6 +41,12 @@ var AllRoutes = Routes{
 		handlers.GetTasksByStatus,
 	},
 	Route{
+		"RegisterUser",
+		"POST",
+		"/register",
+		auth.CreateAccount,
+	},
+	Route{
 		"SignIn",
 		"POST",
 		"/login",

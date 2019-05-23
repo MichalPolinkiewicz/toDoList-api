@@ -5,7 +5,7 @@ import (
 )
 
 func CreateTask(t *models.Task){
-	db.Create(*t)
+	db.Create(t)
 }
 
 func GetAllTasks(i *int) []models.Task {
@@ -15,23 +15,37 @@ func GetAllTasks(i *int) []models.Task {
 	return tasks
 }
 
-func GetTaskById(i *int) models.Task {
+func GetTaskById(i *int, u *int) models.Task {
 	var task models.Task
-	db.Where("id = ?", *i).Find(&task)
+	db.Where("id = ?", *i).Where("user_id = ?", *u).Find(&task)
 
 	return task
 }
 
-func GetTasksByStatus(s *int) *[]models.Task {
+func GetTasksByStatus(s *int, u *int) *[]models.Task {
 	var tasks []models.Task
-	db.Where("status = ?", *s).Find(&tasks)
+	db.Where("status = ?", *s).Where("user_id = ?", *u).Find(&tasks)
 
 	return &tasks
 }
 
-func GetUserByUsernameAndPassword(u *string, p *string) *models.User {
+func GetUserFromDb(u *string, p *string) *models.User {
 	var user models.User
 	db.Where("username = ?", *u).Where("password = ?", *p).Find(&user)
 
 	return &user
+}
+
+func CheckIfUserExistsInDb(u *string) bool{
+	var user models.User
+	db.Where("username = ?", *u).Find(&user)
+
+	if user.Username == *u && user.Password != "" {
+		return true
+	}
+	return false
+}
+
+func SaveUser (u *models.User){
+	db.Create(u)
 }

@@ -2,7 +2,6 @@ package auth
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/MichalPolinkiewicz/to-do-api/db"
 	"github.com/MichalPolinkiewicz/to-do-api/models"
 	"github.com/dgrijalva/jwt-go"
@@ -13,7 +12,7 @@ import (
 var JwtKey = []byte("my_secret_key")
 var LoggedOutUsers []string
 
-// Struct that will be encoded to a JWT. We add jwt.StandardClaims as an embedded type, to provide fields like expiry time
+// struct that will be encoded to a JWT. We add jwt.StandardClaims as an embedded type, to provide fields like expiry time
 type Claims struct {
 	UserId   int    `json:"user_id"`
 	Username string `json:"username"`
@@ -21,18 +20,20 @@ type Claims struct {
 }
 
 func CreateAccount(res http.ResponseWriter, req *http.Request) {
-	//c, err := ReadUserFromRequest(req)
-	//
-	//if err != nil {
-	//	res.WriteHeader(http.StatusBadRequest)
-	//	return
-	//}
+	var user models.User
+	err := json.NewDecoder(req.Body).Decode(&user)
 
-	//u := models.User{Username:c.Username, Password:c.Password, IsLogged:false}
+	//if some params missing return http 400
+	if err != nil {
+		res.WriteHeader(http.StatusBadRequest)
+		return
+	}
 
-	//pobranie danych z requesta
-	//sprawdzenie w bazie czy sa email jest unikalny
-	//jesli tak - zapis
+	if db.CheckIfUserExistsInDb(&user.Username) {
+		res.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	db.SaveUser(&user)
 }
 
 func Login(res http.ResponseWriter, req *http.Request) {
@@ -46,14 +47,7 @@ func Login(res http.ResponseWriter, req *http.Request) {
 	}
 
 	// check that user account exists in 'db' and password is valid - user can log in
-	if !isValidUser(&user) {
-		res.WriteHeader(http.StatusUnauthorized)
-		return
-	}
-
-	//get user id from db
-	userFromDb := db.GetUserByUsernameAndPassword(&user.Username, &user.Password)
-	fmt.Println("user from db = ", userFromDb)
+	userFromDb := db.GetUserFromDb(&user.Username, &user.Password)
 
 	if userFromDb.Id == 0 {
 		res.WriteHeader(http.StatusUnauthorized)
@@ -63,12 +57,13 @@ func Login(res http.ResponseWriter, req *http.Request) {
 	//generate and set token cookie
 	tokenString, err := createToken(userFromDb.Id, user.Username, "token")
 
-	// If there is an error in creating the JWT return an internal server error
+	// if there is an error in creating the JWT return an internal server error
 	if err != nil {
 		res.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
+	//no error - set cookie
 	http.SetCookie(res, &http.Cookie{
 		Name:  "token",
 		Value: tokenString,
@@ -86,34 +81,6 @@ func Login(res http.ResponseWriter, req *http.Request) {
 		Name:  "refresh",
 		Value: tokenString,
 	})
-}
-
-func Logout(res http.ResponseWriter, req *http.Request) {
-
-	c, err := getCookie(req, "token")
-	if err != 0 || c == nil {
-		res.WriteHeader(http.StatusUnauthorized)
-		return
-	}
-
-	isValid, err := isValidToken(&c.Value)
-	if err != 0 {
-		res.WriteHeader(http.StatusUnauthorized)
-		return
-	}
-
-	if isValid {
-		for _, l := range LoggedOutUsers {
-			if l == c.Value {
-				res.WriteHeader(http.StatusUnauthorized)
-				return
-			}
-		}
-		LoggedOutUsers = append(LoggedOutUsers, c.Value)
-		return
-	} else {
-		res.WriteHeader(http.StatusUnauthorized)
-	}
 }
 
 func CheckJwtToken(h http.Handler) http.Handler {
@@ -144,10 +111,8 @@ func CheckJwtToken(h http.Handler) http.Handler {
 			}
 		}
 
-		isValid, err := isValidToken(&t)
-
 		//if token is valid - return response
-		if isValid && err == 0 {
+		if isValidToken(&t) {
 			h.ServeHTTP(res, req)
 		} else {
 			//token is expired - check for refresh token
@@ -161,15 +126,8 @@ func CheckJwtToken(h http.Handler) http.Handler {
 			t := c.Value
 
 			//check if refresh token is valid
-			isValid, err := isValidToken(&t)
-
-			if err != 0 {
-				res.WriteHeader(http.StatusUnauthorized)
-				return
-			}
-
-			//if is valid - create new token and new refresh token
-			if isValid {
+			//if is valid - create new token
+			if isValidToken(&t) {
 				//get username
 				claims := &Claims{}
 				_, err := jwt.ParseWithClaims(t, claims, func(token *jwt.Token) (interface{}, error) {
@@ -189,11 +147,15 @@ func CheckJwtToken(h http.Handler) http.Handler {
 					return
 				}
 
-				//set new token cookie
-				http.SetCookie(res, &http.Cookie{
-					Name:  "token",
-					Value: t,
-				})
+				c, e := getCookie(req, "token")
+
+				if e != 0 {
+					res.WriteHeader(http.StatusUnauthorized)
+					return
+				}
+
+				c.Value = t
+				c.Name = "token"
 				h.ServeHTTP(res, req)
 			} else {
 				res.WriteHeader(http.StatusUnauthorized)
@@ -202,6 +164,37 @@ func CheckJwtToken(h http.Handler) http.Handler {
 		}
 	})
 }
+
+func Logout(res http.ResponseWriter, req *http.Request) {
+	c, err := getCookie(req, "refresh")
+
+	if err != 0 {
+		res.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	if isValidToken(&c.Value) {
+		for _, l := range LoggedOutUsers {
+			if l == c.Value {
+				res.WriteHeader(http.StatusUnauthorized)
+				return
+			}
+		}
+		LoggedOutUsers = append(LoggedOutUsers, c.Value)
+
+		c, err := getCookie(req, "token")
+		if err != 0 {
+			res.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+
+		LoggedOutUsers = append(LoggedOutUsers, c.Value)
+		return
+	} else {
+		res.WriteHeader(http.StatusUnauthorized)
+	}
+}
+
 func GetUserIdFromRequest(req *http.Request) int {
 	c, _ := getCookie(req, "refresh")
 
@@ -217,7 +210,7 @@ func GetUserIdFromRequest(req *http.Request) int {
 	return claims.UserId
 }
 
-func isValidToken(t *string) (bool, int) {
+func isValidToken(t *string) bool {
 	// Initialize a new instance of `Claims`
 	claims := &Claims{}
 
@@ -227,13 +220,11 @@ func isValidToken(t *string) (bool, int) {
 		return JwtKey, nil
 	})
 
-	i := 0
-
 	if err != nil {
-		i = http.StatusUnauthorized
+		return false
 	}
 
-	return tkn.Valid, i
+	return tkn.Valid
 }
 
 func createToken(id int, u string, t string) (string, error) {
@@ -275,14 +266,3 @@ func getCookie(req *http.Request, cn string) (*http.Cookie, int) {
 	}
 	return c, ec
 }
-
-func isValidUser(u *models.User) bool {
-	user := db.GetUserByUsernameAndPassword(&u.Username, &u.Password)
-
-	if user != nil {
-		return true
-	}
-
-	return false
-}
-
