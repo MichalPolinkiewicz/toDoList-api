@@ -55,7 +55,7 @@ func Login(res http.ResponseWriter, req *http.Request) {
 	}
 
 	//generate and set token cookie
-	tokenString, err := createToken(userFromDb.Id, user.Username, "token")
+	tokenString, err := createToken(&userFromDb.Id, &user.Username, "token")
 
 	// if there is an error in creating the JWT return an internal server error
 	if err != nil {
@@ -70,7 +70,7 @@ func Login(res http.ResponseWriter, req *http.Request) {
 	})
 
 	//generate and set token refresh cookie
-	tokenString, err = createToken(userFromDb.Id, user.Username, "refresh")
+	tokenString, err = createToken(&userFromDb.Id, &user.Username, "refresh")
 
 	if err != nil {
 		res.WriteHeader(http.StatusInternalServerError)
@@ -140,7 +140,7 @@ func CheckJwtToken(h http.Handler) http.Handler {
 				}
 
 				//creating new token
-				t, err := createToken(claims.UserId, claims.Username, "token")
+				t, err := createToken(&claims.UserId, &claims.Username, "token")
 
 				if err != nil {
 					res.WriteHeader(http.StatusUnauthorized)
@@ -227,7 +227,7 @@ func isValidToken(t *string) bool {
 	return tkn.Valid
 }
 
-func createToken(id int, u string, t string) (string, error) {
+func createToken(id *int, u *string, t string) (string, error) {
 	// Declare the expiration time of the token, depending on type
 	var expirationTime time.Time
 
@@ -239,8 +239,8 @@ func createToken(id int, u string, t string) (string, error) {
 
 	// Create the JWT claims, which includes the username and expiry time
 	claims := &Claims{
-		UserId:   id,
-		Username: u,
+		UserId:   *id,
+		Username: *u,
 		StandardClaims: jwt.StandardClaims{
 			// In JWT, the expiry time is expressed as unix milliseconds
 			ExpiresAt: expirationTime.Unix(),
